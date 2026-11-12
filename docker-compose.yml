@@ -1,0 +1,16 @@
+services:
+  pusattokenai-mcp:
+    build: .
+    container_name: pusattokenai-mcp-server
+    restart: unless-stopped
+    ports:
+      - "${MCP_PORT:-8088}:${MCP_PORT:-8088}"
+    environment:
+      - PORT=${MCP_PORT:-8088}
+      - HOST=0.0.0.0
+      - PUSATTOKENAI_API_KEY=${PUSATTOKENAI_API_KEY:-}
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import os, urllib.request; p = os.getenv('PORT', '8088'); urllib.request.urlopen(f'http://localhost:{p}/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
