@@ -54,7 +54,7 @@ Handles text completions, coding, deep analysis, and chain-of-thought reasoning.
 | Parameter | Type | Required | Default | Available Options / Examples |
 | :--- | :--- | :--- | :--- | :--- |
 | `prompt` | string | **Yes** | — | Any question, instruction, or reasoning task. |
-| `model` | string | No | `deepseek-r1` | `deepseek-r1`, `gpt-4o`, `claude-3-5-sonnet`, `gemini-2.5-pro`, `qwen-2.5-72b` |
+| `model` | string | No | `gemini-3.8-flash` | `gemini-3.8-flash`, `gpt-4o`, `claude-sonnet-5-5`, `deepseek-v4-flash` |
 | `system_prompt` | string | No | `None` | Optional persona or system-level constraints. |
 | `temperature` | float | No | `0.7` | `0.0` (strict/coding) to `1.0` (creative). |
 

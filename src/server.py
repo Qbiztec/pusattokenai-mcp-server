@@ -20,7 +20,7 @@ async def generate_text(
     system_prompt: Optional[str] = None,
     temperature: float = 0.7,
 ) -> str:
-    """Generate text completions or reasoning using models available on PusatTokenAI (e.g., deepseek-r1, gpt-4o, claude-3-5-sonnet)."""
+    """Generate text completions or reasoning using models available on PusatTokenAI (e.g., gemini-3.8-flash, gpt-4o, claude-sonnet-5-5)."""
     res = await _generate_text(
         prompt=prompt,
         model=model,

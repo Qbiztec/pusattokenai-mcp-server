@@ -5,7 +5,7 @@ from typing import Optional, Dict, Any
 import httpx
 
 BASE_URL = "https://www.pusattokenai.com/v1"
-DEFAULT_TEXT_MODEL = "deepseek-r1"
+DEFAULT_TEXT_MODEL = "gemini-3.8-flash"
 
 
 async def generate_text(
@@ -21,7 +21,7 @@ async def generate_text(
     Args:
         prompt: User instruction or question.
         api_key: User's PusatTokenAI API key.
-        model: Model identifier (default: 'deepseek-r1').
+        model: Model identifier (default: 'gemini-3.8-flash').
         system_prompt: Optional system persona or instructions.
         temperature: Sampling temperature (0.0 to 1.0).
         timeout: Request timeout in seconds.
