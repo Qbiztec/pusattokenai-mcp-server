@@ -1,6 +1,6 @@
 # PusatTokenAI MCP Server
 
-A modular Model Context Protocol (MCP) server providing access to frontier text, reasoning, and image generation models hosted on PusatTokenAI.
+A modular Model Context Protocol (MCP) server providing access to frontier text, reasoning, image generation, and audio speech models hosted on PusatTokenAI.
 
 ---
 
@@ -46,7 +46,7 @@ End users connect to this server remotely without installing Python, Docker, or 
 
 ## 3. Available Tools & Configuration Options
 
-End users configure models, resolutions, and settings dynamically per request directly through natural language or tool arguments in chat.
+End users configure models, resolutions, voices, and settings dynamically per request directly through natural language or tool arguments in chat.
 
 ### Tool 1: `generate_text`
 Handles text completions, coding, deep analysis, and chain-of-thought reasoning.
@@ -59,7 +59,7 @@ Handles text completions, coding, deep analysis, and chain-of-thought reasoning.
 | `temperature` | float | No | `0.7` | `0.0` (strict/coding) to `1.0` (creative). |
 
 **Chat Prompt Example**:
-> *"Use generate_text with model deepseek-r1 and temperature 0.2 to analyze this SQL schema for bottlenecks."*
+> *"Use generate_text with model gemini-3.8-flash to explain quantum computing in 2 sentences."*
 
 ---
 
@@ -74,7 +74,21 @@ Generates high-resolution images from text descriptions.
 | `n` | integer | No | `1` | Number of images to generate (e.g. `1` to `4`). |
 
 **Chat Prompt Example**:
-> *"Use generate_image with model seedream-5.0-pro and size 1024x768 to create a futuristic neon skyline at dusk."*
+> *"Use generate_image to create an image of a cybernetic cat in neon Tokyo."*
+
+---
+
+### Tool 3: `generate_audio`
+Generates realistic speech audio (Text-to-Speech) delivered with an interactive HTML5 player directly in chat.
+
+| Parameter | Type | Required | Default | Available Options / Examples |
+| :--- | :--- | :--- | :--- | :--- |
+| `text` | string | **Yes** | — | The sentence, paragraph, or phrase to be read aloud. |
+| `model` | string | No | `qwen3.5-omni-flash` | `qwen3.5-omni-flash`, `qwen-audio-3.0-realtime-flash` |
+| `voice` | string | No | `Serena` | `Serena` (Warm Female), `Ethan` (Natural Male) |
+
+**Chat Prompt Example**:
+> *"Use generate_audio with Serena voice to read aloud: Welcome to PusatTokenAI, your frontier AI platform."*
 
 ---
 

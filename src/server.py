@@ -3,12 +3,12 @@ from typing import Optional, List
 from starlette.responses import JSONResponse
 from starlette.requests import Request
 from starlette.routing import Route
-from starlette.middleware.base import BaseHTTPMiddleware
 
 from mcp.server.mcpserver import MCPServer
 
 from .modalities.text import generate_text as _generate_text, DEFAULT_TEXT_MODEL
 from .modalities.image import generate_image as _generate_image, DEFAULT_IMAGE_MODEL
+from .modalities.audio import generate_audio as _generate_audio, DEFAULT_AUDIO_MODEL, DEFAULT_VOICE
 
 mcp = MCPServer("pusattokenai-mcp")
 
@@ -58,35 +58,61 @@ async def generate_image(
     return f"Error: {res.get('message')}"
 
 
+@mcp.tool()
+async def generate_audio(
+    text: str,
+    model: str = DEFAULT_AUDIO_MODEL,
+    voice: str = DEFAULT_VOICE,
+) -> str:
+    """Generate speech audio from text using models available on PusatTokenAI (e.g., qwen3.5-omni-flash with Serena or Ethan voice)."""
+    res = await _generate_audio(
+        text=text,
+        model=model,
+        voice=voice,
+    )
+    if res.get("status") == "success":
+        return f"{res.get('html_player')}\n\n*Spoken text: \"{res.get('text')}\" (Voice: {res.get('voice')})*"
+    return f"Error: {res.get('message')}"
+
+
 async def handle_health(request: Request) -> JSONResponse:
     """Health check endpoint."""
     return JSONResponse(
         {
             "status": "healthy",
             "server": "pusattokenai-mcp",
-            "modalities": ["text", "image"],
+            "modalities": ["text", "image", "audio"],
         }
     )
 
 
-class AuthExtractionMiddleware(BaseHTTPMiddleware):
-    """Dynamically extracts the user's API key from their incoming MCP client request."""
-    async def dispatch(self, request: Request, call_next):
-        auth_header = request.headers.get("authorization", "")
-        if auth_header.startswith("Bearer "):
-            os.environ["PUSATTOKENAI_API_KEY"] = auth_header[7:].strip()
+class PureASGIAuthMiddleware:
+    """Pure ASGI middleware to safely extract client API keys without breaking SSE streams."""
+    def __init__(self, app):
+        self.app = app
 
-        api_key_query = request.query_params.get("api_key")
-        if api_key_query:
-            os.environ["PUSATTOKENAI_API_KEY"] = api_key_query.strip()
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http":
+            for name, value in scope.get("headers", []):
+                if name.lower() == b"authorization":
+                    val_str = value.decode("latin1", errors="ignore")
+                    if val_str.startswith("Bearer "):
+                        os.environ["PUSATTOKENAI_API_KEY"] = val_str[7:].strip()
 
-        return await call_next(request)
+            qs = scope.get("query_string", b"").decode("latin1", errors="ignore")
+            for param in qs.split("&"):
+                if param.startswith("api_key="):
+                    os.environ["PUSATTOKENAI_API_KEY"] = param[8:].strip()
+
+        await self.app(scope, receive, send)
 
 
-# Mount SSE Starlette app, add health check route, and add dynamic auth middleware
-app = mcp.sse_app()
-app.routes.append(Route("/health", endpoint=handle_health, methods=["GET"]))
-app.add_middleware(AuthExtractionMiddleware)
+# Mount SSE Starlette app and add health check route
+base_app = mcp.sse_app()
+base_app.routes.append(Route("/health", endpoint=handle_health, methods=["GET"]))
+
+# Wrap with pure ASGI middleware
+app = PureASGIAuthMiddleware(base_app)
 
 
 if __name__ == "__main__":
