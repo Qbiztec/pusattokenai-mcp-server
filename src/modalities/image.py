@@ -4,7 +4,7 @@ import os
 from typing import Optional, Dict, Any, List
 import httpx
 
-DEFAULT_BASE_URL = "https://www.pusattokenai.com/v1"
+BASE_URL = "https://www.pusattokenai.com/v1"
 DEFAULT_IMAGE_MODEL = "seedream-4.5"
 
 
@@ -15,18 +15,17 @@ async def generate_image(
     size: str = "1024x1024",
     n: int = 1,
     response_format: str = "url",
-    base_url: str = DEFAULT_BASE_URL,
     timeout: float = 90.0,
 ) -> Dict[str, Any]:
-    """
+    """Generates images using text-to-image models available on PusatTokenAI.
+
     Args:
         prompt: Detailed description of the desired image.
-        api_key: PusatTokenAI API key. Defaults to PUSATTOKENAI_API_KEY env var.
-        model: Model name (e.g., 'seedream-4.5', 'seedream-5.0-pro', 'gpt-image-2.5-flare').
-        size: Target resolution (e.g., '1024x1024', '768x1024', '1024x768').
+        api_key: User's PusatTokenAI API key.
+        model: Model name (default: 'seedream-4.5').
+        size: Target resolution (default: '1024x1024').
         n: Number of images to generate (default 1).
         response_format: 'url' (hosted link) or 'b64_json'.
-        base_url: Gateway base URL.
         timeout: Request timeout in seconds.
 
     Returns:
@@ -36,7 +35,7 @@ async def generate_image(
     if not token:
         return {
             "status": "error",
-            "message": "Missing API key. Provide api_key parameter or set PUSATTOKENAI_API_KEY.",
+            "message": "Missing API key. Provide api_key or send Authorization header from your MCP client.",
         }
 
     payload = {
@@ -52,7 +51,7 @@ async def generate_image(
         "Content-Type": "application/json",
     }
 
-    url = f"{base_url.rstrip('/')}/images/generations"
+    url = f"{BASE_URL}/images/generations"
 
     async with httpx.AsyncClient(timeout=timeout) as client:
         try:

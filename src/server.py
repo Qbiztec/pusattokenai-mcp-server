@@ -3,6 +3,7 @@ from typing import Optional, List
 from starlette.responses import JSONResponse
 from starlette.requests import Request
 from starlette.routing import Route
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from mcp.server.mcpserver import MCPServer
 
@@ -68,13 +69,26 @@ async def handle_health(request: Request) -> JSONResponse:
     )
 
 
-# Mount SSE Starlette app and add health check route
+class AuthExtractionMiddleware(BaseHTTPMiddleware):
+    """Dynamically extracts the user's API key from their incoming MCP client request."""
+    async def dispatch(self, request: Request, call_next):
+        auth_header = request.headers.get("authorization", "")
+        if auth_header.startswith("Bearer "):
+            os.environ["PUSATTOKENAI_API_KEY"] = auth_header[7:].strip()
+
+        api_key_query = request.query_params.get("api_key")
+        if api_key_query:
+            os.environ["PUSATTOKENAI_API_KEY"] = api_key_query.strip()
+
+        return await call_next(request)
+
+
+# Mount SSE Starlette app, add health check route, and add dynamic auth middleware
 app = mcp.sse_app()
 app.routes.append(Route("/health", endpoint=handle_health, methods=["GET"]))
+app.add_middleware(AuthExtractionMiddleware)
 
 
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.getenv("PORT", "8088"))
-    host = os.getenv("HOST", "0.0.0.0")
-    uvicorn.run("src.server:app", host=host, port=port, reload=True)
+    uvicorn.run("src.server:app", host="0.0.0.0", port=8088, reload=True)

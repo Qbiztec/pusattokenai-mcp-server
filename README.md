@@ -1,54 +1,95 @@
 # PusatTokenAI MCP Server
 
-A modular Model Context Protocol (MCP) server providing access to frontier models on PusatTokenAI.
-
-## Supported Modalities & Tools
-
-| Modality | Tool Name | Target Endpoint | Default Model | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| **Text** | `generate_text` | `POST /v1/chat/completions` | `deepseek-r1` | Text completions, coding, and reasoning. |
-| **Image** | `generate_image` | `POST /v1/images/generations` | `seedream-4.5` | Text-to-Image generation at custom resolutions. |
+A modular Model Context Protocol (MCP) server providing access to frontier text, reasoning, and image generation models hosted on PusatTokenAI.
 
 ---
 
-## Deployment (Docker & SSE)
+## 1. Quickstart Deployment (Server Host)
 
-### 1. Using Docker Compose (Recommended)
+The server requires only a single environment setting (`MCP_PORT`):
+
 ```bash
-# Copy environment configuration
+# 1. Copy environment template (defaults to port 8088)
 cp .env.example .env
 
-# Start container
+# 2. (Optional) Customize host port in .env if needed:
+# MCP_PORT=10234
+
+# 3. Start the container
 docker compose up -d --build
 ```
-The server will start at `http://localhost:8088` (configurable via `MCP_PORT` in `.env`):
-* Health check: `GET http://localhost:8088/health`
-* SSE Endpoint: `GET http://localhost:8088/sse`
-* Messages: `POST http://localhost:8088/messages`
 
-### 2. Running Locally with Python
-```bash
-pip install -r requirements.txt
-export PUSATTOKENAI_API_KEY="sk-..."
-export PORT=8088
-uvicorn src.server:app --host 0.0.0.0 --port 8088
-```
+### Endpoints
+* **Health Check**: `GET http://<server-ip>:<MCP_PORT>/health`
+* **SSE Stream**: `GET http://<server-ip>:<MCP_PORT>/sse`
+* **Messages**: `POST http://<server-ip>:<MCP_PORT>/messages`
 
 ---
 
-## Client Configuration (Cherry Studio / Claude Desktop)
+## 2. Client Connection Setup (Cherry Studio / Claude Desktop)
 
-### Option A: Remote SSE (Zero-Install for End Users)
-In Cherry Studio:
-1. Go to **Settings → Tools → MCP → `+ Add`**.
+End users connect to this server remotely without installing Python, Docker, or any local dependencies.
+
+### Connecting in Cherry Studio:
+1. Open **Settings → Tools → MCP → `+ Add`**.
 2. Select **Remote (SSE)**.
-3. Configure:
-   * **URL**: `http://<your-server-ip>:8088/sse` (or `https://mcp.pusattokenai.com/sse`)
+3. Configure the connection fields:
+   * **Name**: `PusatTokenAI`
+   * **Type**: `SSE`
+   * **Server URL**: `http://<server-ip>:<MCP_PORT>/sse` (e.g., `http://localhost:8088/sse` or `https://mcp.pusattokenai.com/sse`)
    * **Headers**:
-     * `Authorization`: `Bearer sk-your-api-key`
+     * Key: `Authorization`
+     * Value: `Bearer sk-your-pusattokenai-api-key`
+4. Toggle the server to **Active / Enabled**.
 
-### Option B: Local Stdio Command
-If running locally on your own machine:
+---
+
+## 3. Available Tools & Configuration Options
+
+End users configure models, resolutions, and settings dynamically per request directly through natural language or tool arguments in chat.
+
+### Tool 1: `generate_text`
+Handles text completions, coding, deep analysis, and chain-of-thought reasoning.
+
+| Parameter | Type | Required | Default | Available Options / Examples |
+| :--- | :--- | :--- | :--- | :--- |
+| `prompt` | string | **Yes** | — | Any question, instruction, or reasoning task. |
+| `model` | string | No | `deepseek-r1` | `deepseek-r1`, `gpt-4o`, `claude-3-5-sonnet`, `gemini-2.5-pro`, `qwen-2.5-72b` |
+| `system_prompt` | string | No | `None` | Optional persona or system-level constraints. |
+| `temperature` | float | No | `0.7` | `0.0` (strict/coding) to `1.0` (creative). |
+
+**Chat Prompt Example**:
+> *"Use generate_text with model deepseek-r1 and temperature 0.2 to analyze this SQL schema for bottlenecks."*
+
+---
+
+### Tool 2: `generate_image`
+Generates high-resolution images from text descriptions.
+
+| Parameter | Type | Required | Default | Available Options / Examples |
+| :--- | :--- | :--- | :--- | :--- |
+| `prompt` | string | **Yes** | — | Detailed visual description of the subject, style, and lighting. |
+| `model` | string | No | `seedream-4.5` | `seedream-4.5`, `seedream-5.0-pro`, `gpt-image-2.5-flare`, `qwen-image-2.0-pro` |
+| `size` | string | No | `1024x1024` | `1024x1024` (Square), `768x1024` (Portrait), `1024x768` (Landscape) |
+| `n` | integer | No | `1` | Number of images to generate (e.g. `1` to `4`). |
+
+**Chat Prompt Example**:
+> *"Use generate_image with model seedream-5.0-pro and size 1024x768 to create a futuristic neon skyline at dusk."*
+
+---
+
+## 4. Local Execution (CLI / Stdio Mode)
+
+For power users who prefer running the server locally via standard I/O instead of Docker:
+
+```bash
+pip install -r requirements.txt
+
+# Run via stdio transport
+python3 -m src.cli --api-key "sk-your-api-key"
+```
+
+In Cherry Studio / Claude Desktop local settings:
 ```json
 {
   "name": "pusattokenai",

@@ -4,7 +4,7 @@ import os
 from typing import Optional, Dict, Any
 import httpx
 
-DEFAULT_BASE_URL = "https://www.pusattokenai.com/v1"
+BASE_URL = "https://www.pusattokenai.com/v1"
 DEFAULT_TEXT_MODEL = "deepseek-r1"
 
 
@@ -14,17 +14,16 @@ async def generate_text(
     model: str = DEFAULT_TEXT_MODEL,
     system_prompt: Optional[str] = None,
     temperature: float = 0.7,
-    base_url: str = DEFAULT_BASE_URL,
     timeout: float = 60.0,
 ) -> Dict[str, Any]:
-    """
+    """Generates text completion using models available on PusatTokenAI.
+
     Args:
         prompt: User instruction or question.
-        api_key: PusatTokenAI API key. Defaults to PUSATTOKENAI_API_KEY env var.
-        model: Model identifier (e.g., 'deepseek-r1', 'gpt-4o', 'claude-3-5-sonnet').
+        api_key: User's PusatTokenAI API key.
+        model: Model identifier (default: 'deepseek-r1').
         system_prompt: Optional system persona or instructions.
         temperature: Sampling temperature (0.0 to 1.0).
-        base_url: Gateway base URL.
         timeout: Request timeout in seconds.
 
     Returns:
@@ -34,7 +33,7 @@ async def generate_text(
     if not token:
         return {
             "status": "error",
-            "message": "Missing API key. Provide api_key parameter or set PUSATTOKENAI_API_KEY.",
+            "message": "Missing API key. Provide api_key or send Authorization header from your MCP client.",
         }
 
     messages = []
@@ -53,7 +52,7 @@ async def generate_text(
         "Content-Type": "application/json",
     }
 
-    url = f"{base_url.rstrip('/')}/chat/completions"
+    url = f"{BASE_URL}/chat/completions"
 
     async with httpx.AsyncClient(timeout=timeout) as client:
         try:
