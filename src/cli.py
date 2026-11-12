@@ -2,9 +2,8 @@ import os
 import sys
 import asyncio
 import argparse
-from mcp.server.stdio import stdio_server
 
-from .server import app_server
+from .server import mcp
 
 
 async def main() -> None:
@@ -22,12 +21,7 @@ async def main() -> None:
     if args.api_key:
         os.environ["PUSATTOKENAI_API_KEY"] = args.api_key
 
-    async with stdio_server() as (read_stream, write_stream):
-        await app_server.run(
-            read_stream,
-            write_stream,
-            app_server.create_initialization_options(),
-        )
+    await mcp.run_stdio_async()
 
 
 if __name__ == "__main__":
