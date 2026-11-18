@@ -1,19 +1,21 @@
 # PusatTokenAI MCP Server
 
-A modular Model Context Protocol (MCP) server providing access to frontier text, reasoning, image generation, and audio speech models hosted on PusatTokenAI.
+A modular Model Context Protocol (MCP) server providing access to frontier text, reasoning, image generation, audio speech, and video generation models hosted on PusatTokenAI.
 
 ---
 
 ## 1. Quickstart Deployment (Server Host)
 
-The server requires only a single environment setting (`MCP_PORT`):
+The server requires minimal configuration via environment variables:
 
 ```bash
 # 1. Copy environment template (defaults to port 8088)
 cp .env.example .env
 
-# 2. (Optional) Customize host port in .env if needed:
+# 2. (Optional) Customize settings in .env if needed:
 # MCP_PORT=10234
+# PUBLIC_BASE_URL=https://mcp.pusattokenai.com
+# MEDIA_DIR=/tmp/pusattokenai_media
 
 # 3. Start the container
 docker compose up -d --build
@@ -21,22 +23,29 @@ docker compose up -d --build
 
 ### Endpoints
 * **Health Check**: `GET http://<server-ip>:<MCP_PORT>/health`
-* **SSE Stream**: `GET http://<server-ip>:<MCP_PORT>/sse`
-* **Messages**: `POST http://<server-ip>:<MCP_PORT>/messages`
+* **Streamable HTTP (Recommended)**: `http://<server-ip>:<MCP_PORT>/mcp`
+* **Legacy SSE Stream**: `GET http://<server-ip>:<MCP_PORT>/sse` & `POST http://<server-ip>:<MCP_PORT>/messages/`
+* **Generated Audio Media**: `GET http://<server-ip>:<MCP_PORT>/media/{filename}` *(temporary `.wav` files, 24h TTL)*
 
 ---
 
-## 2. Client Connection Setup (Cherry Studio / Claude Desktop)
+## 2. Client Connection Setup
 
 End users connect to this server remotely without installing Python, Docker, or any local dependencies.
 
-### Connecting in Cherry Studio:
+### Connecting in Claude Code (Streamable HTTP)
+```bash
+claude mcp add --transport http pusattokenai https://mcp.pusattokenai.com/mcp \
+  --header "Authorization: Bearer sk-your-pusattokenai-api-key"
+```
+
+### Connecting in Cherry Studio
 1. Open **Settings → Tools → MCP → `+ Add`**.
-2. Select **Remote (SSE)**.
+2. Select **Streamable HTTP** (recommended) or **SSE**.
 3. Configure the connection fields:
    * **Name**: `PusatTokenAI`
-   * **Type**: `SSE`
-   * **Server URL**: `http://<server-ip>:<MCP_PORT>/sse` (e.g., `http://localhost:8088/sse` or `https://mcp.pusattokenai.com/sse`)
+   * **Type**: `Streamable HTTP` or `SSE`
+   * **Server URL**: `https://mcp.pusattokenai.com/mcp` (or `/sse` for legacy SSE)
    * **Headers**:
      * Key: `Authorization`
      * Value: `Bearer sk-your-pusattokenai-api-key`
@@ -79,7 +88,7 @@ Generates high-resolution images from text descriptions.
 ---
 
 ### Tool 3: `generate_audio`
-Generates realistic speech audio (Text-to-Speech) delivered with an interactive HTML5 player directly in chat.
+Generates realistic speech audio (Text-to-Speech) saved as a temporary `.wav` file and returned as a lightweight downloadable HTTP URL (`/media/{filename}`) to avoid bloating chat context.
 
 | Parameter | Type | Required | Default | Available Options / Examples |
 | :--- | :--- | :--- | :--- | :--- |
@@ -89,6 +98,34 @@ Generates realistic speech audio (Text-to-Speech) delivered with an interactive 
 
 **Chat Prompt Example**:
 > *"Use generate_audio with Serena voice to read aloud: Welcome to PusatTokenAI, your frontier AI platform."*
+
+---
+
+### Tool 4: `generate_video`
+Generates videos from text prompts or reference images using asynchronous video models. Polls up to `wait_seconds` and either returns the completed video URL or a `task_id` to check via `get_video_status`.
+
+| Parameter | Type | Required | Default | Available Options / Examples |
+| :--- | :--- | :--- | :--- | :--- |
+| `prompt` | string | **Yes** | — | Detailed description of the desired video scene and motion. |
+| `model` | string | No | `seedance-2.0-fast` | `seedance-2.0-fast`, `seedance-2.0`, `kling-3.0-turbo` |
+| `duration` | integer | No | `4` | Video duration in seconds (e.g., `3`, `4`, `5`, `10`). |
+| `resolution` | string | No | `480p` | `480p`, `720p`, `1080p` |
+| `ratio` | string | No | `16:9` | `16:9`, `9:16`, `1:1` |
+| `image_url` | string | No | `None` | Optional reference/first-frame image URL for image-to-video. |
+| `generate_audio` | boolean | No | `None` | Optional flag to enable/disable native audio generation. |
+| `wait_seconds` | integer | No | `45` | Max seconds to poll before returning a pending `task_id`. |
+
+**Chat Prompt Example**:
+> *"Use generate_video to create a 4s 480p 16:9 video of a drone flying over a misty tropical waterfall at sunrise."*
+
+---
+
+### Tool 5: `get_video_status`
+Polls the status and retrieves the video URL of a pending video generation task returned by `generate_video`.
+
+| Parameter | Type | Required | Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `task_id` | string | **Yes** | — | The `task_id` returned by `generate_video`. |
 
 ---
 

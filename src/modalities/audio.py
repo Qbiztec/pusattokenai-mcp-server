@@ -2,26 +2,54 @@
 
 import os
 import io
+import time
+import uuid
 import wave
 import json
 import base64
+from pathlib import Path
 from typing import Optional, Dict, Any
 import httpx
 
 BASE_URL = "https://www.pusattokenai.com/v1"
 DEFAULT_AUDIO_MODEL = "qwen3.5-omni-flash"
 DEFAULT_VOICE = "Serena"
+MEDIA_DIR = Path(os.getenv("MEDIA_DIR", "/tmp/pusattokenai_media"))
+MEDIA_TTL_SECONDS = 86400  # 24 hours
 
 
-def pcm_to_wav_base64(pcm_data: bytes, sample_rate: int = 24000, channels: int = 1, sampwidth: int = 2) -> str:
-    """Wraps raw 16-bit PCM bytes into a standard RIFF WAV container and returns Base64."""
+def pcm_to_wav_bytes(pcm_data: bytes, sample_rate: int = 24000, channels: int = 1, sampwidth: int = 2) -> bytes:
+    """Wraps raw 16-bit PCM bytes into a standard RIFF WAV container."""
     buf = io.BytesIO()
     with wave.open(buf, "wb") as wf:
         wf.setnchannels(channels)
         wf.setsampwidth(sampwidth)
         wf.setframerate(sample_rate)
         wf.writeframes(pcm_data)
-    return base64.b64encode(buf.getvalue()).decode("ascii")
+    return buf.getvalue()
+
+
+def _cleanup_expired_media() -> None:
+    """Removes expired audio files from MEDIA_DIR."""
+    if not MEDIA_DIR.exists():
+        return
+    cutoff = time.time() - MEDIA_TTL_SECONDS
+    for path in MEDIA_DIR.iterdir():
+        try:
+            if path.is_file() and path.stat().st_mtime < cutoff:
+                path.unlink(missing_ok=True)
+        except OSError:
+            continue
+
+
+def save_wav_file(wav_bytes: bytes) -> Dict[str, str]:
+    """Saves WAV bytes to MEDIA_DIR and returns filename and path."""
+    MEDIA_DIR.mkdir(parents=True, exist_ok=True)
+    _cleanup_expired_media()
+    filename = f"{uuid.uuid4().hex}.wav"
+    file_path = MEDIA_DIR / filename
+    file_path.write_bytes(wav_bytes)
+    return {"filename": filename, "file_path": str(file_path)}
 
 
 async def generate_audio(
@@ -104,18 +132,20 @@ async def generate_audio(
                     "text": "".join(text_chunks),
                 }
 
-            wav_b64 = pcm_to_wav_base64(pcm_data, sample_rate=24000)
+            wav_bytes = pcm_to_wav_bytes(pcm_data, sample_rate=24000)
+            saved = save_wav_file(wav_bytes)
             spoken_text = "".join(text_chunks).strip() or text
+            duration_seconds = round(len(pcm_data) / (24000 * 2), 2)
 
             return {
                 "status": "success",
                 "model": model,
                 "voice": voice,
                 "text": spoken_text,
-                "audio_bytes": len(pcm_data),
-                "audio_base64": wav_b64,
-                "data_uri": f"data:audio/wav;base64,{wav_b64}",
-                "html_player": f'<audio controls src="data:audio/wav;base64,{wav_b64}"></audio>',
+                "audio_bytes": len(wav_bytes),
+                "duration_seconds": duration_seconds,
+                "filename": saved["filename"],
+                "file_path": saved["file_path"],
             }
 
         except httpx.HTTPStatusError as e:
